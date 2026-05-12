@@ -1,7 +1,7 @@
 {
-  "name": "generador-carteles-server",
+  "name": "sigma-ac-server",
   "version": "1.0.0",
-  "description": "Backend para el Generador de Carteles",
+  "description": "Backend SIGMA AC",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

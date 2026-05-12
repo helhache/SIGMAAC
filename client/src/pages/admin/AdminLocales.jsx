@@ -8,21 +8,23 @@ export default function AdminLocales() {
   const [modalAcceso, setModalAcceso] = useState(false); // modal crear acceso
   const [editando, setEditando] = useState(null);
   const [localAcceso, setLocalAcceso] = useState(null);
-  const [form, setForm] = useState({ nombre: '', logo: null });
+  const [empresas, setEmpresas] = useState([]);
+  const [form, setForm] = useState({ nombre: '', logo: null, empresa_id: '' });
   const [formAcceso, setFormAcceso] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [errorAcceso, setErrorAcceso] = useState('');
   const [msgAcceso, setMsgAcceso] = useState('');
 
   const cargar = async () => {
-    const { data } = await axios.get('/api/locales');
-    setLocales(data);
+    const [loc, emp] = await Promise.all([axios.get('/api/locales'), axios.get('/api/empresas')]);
+    setLocales(loc.data);
+    setEmpresas(emp.data);
   };
 
   useEffect(() => { cargar(); }, []);
 
-  const abrirNuevo = () => { setEditando(null); setForm({ nombre: '', logo: null }); setError(''); setModal(true); };
-  const abrirEditar = (l) => { setEditando(l); setForm({ nombre: l.nombre, logo: null }); setError(''); setModal(true); };
+  const abrirNuevo = () => { setEditando(null); setForm({ nombre: '', logo: null, empresa_id: empresas[0]?.id || '' }); setError(''); setModal(true); };
+  const abrirEditar = (l) => { setEditando(l); setForm({ nombre: l.nombre, logo: null, empresa_id: l.empresa_id || '' }); setError(''); setModal(true); };
 
   const abrirAcceso = (l) => {
     setLocalAcceso(l);
@@ -39,6 +41,7 @@ export default function AdminLocales() {
     if (!form.nombre.trim()) return setError('El nombre es requerido');
     const fd = new FormData();
     fd.append('nombre', form.nombre);
+    if (form.empresa_id) fd.append('empresa_id', form.empresa_id);
     if (form.logo) fd.append('logo', form.logo);
     try {
       if (editando) {
@@ -62,7 +65,7 @@ export default function AdminLocales() {
         username: formAcceso.username,
         password: formAcceso.password,
         rol: 'LOCAL',
-        local_id: localAcceso.id,
+        local_ids: [localAcceso.id],
       });
       setMsgAcceso(`Acceso creado: ${formAcceso.username}`);
       setFormAcceso({ username: '', password: '' });
@@ -120,7 +123,14 @@ export default function AdminLocales() {
             <h3 className="modal-titulo">{editando ? 'Editar local' : 'Nuevo local'}</h3>
             {error && <div className="msg-error">{error}</div>}
             <div className="form-group">
-              <label className="form-label">Nombre</label>
+              <label className="form-label">Empresa</label>
+              <select className="form-control" value={form.empresa_id} onChange={e => setForm(p => ({ ...p, empresa_id: e.target.value }))}>
+                <option value="">— Sin empresa (se asigna automáticamente) —</option>
+                {empresas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nombre del local</label>
               <input className="form-control" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} />
             </div>
             <div className="form-group">

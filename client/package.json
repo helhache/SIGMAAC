@@ -1,7 +1,7 @@
 {
-  "name": "generador-carteles-client",
+  "name": "sigma-ac-client",
   "version": "1.0.0",
-  "description": "Frontend para el Generador de Carteles",
+  "description": "Frontend SIGMA AC",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,9 @@
     "jspdf": "^2.5.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.24.0"
+    "react-router-dom": "^6.24.0",
+    "recharts": "^3.8.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

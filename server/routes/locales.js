@@ -8,9 +8,15 @@ const { storageLogo } = require('../cloudinary');
 const upload = multer({ storage: storageLogo, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // GET /api/locales — público (el login necesita saber los locales para el formulario de usuario)
+// ?empresa_id=X filtra por empresa
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM locales WHERE activo = 1 ORDER BY nombre');
+    const { empresa_id } = req.query;
+    let query = 'SELECT * FROM locales WHERE activo = 1';
+    const params = [];
+    if (empresa_id) { query += ' AND empresa_id = ?'; params.push(empresa_id); }
+    query += ' ORDER BY nombre';
+    const [rows] = await db.query(query, params);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener locales', detalle: err.message });
@@ -31,11 +37,22 @@ router.get('/:id', async (req, res) => {
 // POST /api/locales — solo ADMIN
 router.post('/', verificarToken, soloAdmin, upload.single('logo'), async (req, res) => {
   try {
-    const { nombre } = req.body;
+    const { nombre, empresa_id } = req.body;
     const logo = req.file ? req.file.path : null;
+
+    // Si no viene empresa_id, usar la empresa 1 (o crearla si no existe)
+    let empId = empresa_id || 1;
+    const [[emp]] = await db.query('SELECT id FROM empresas WHERE id = ?', [empId]);
+    if (!emp) {
+      const [r] = await db.query(
+        "INSERT INTO empresas (nombre, tipo) VALUES ('Principal', 'regional')"
+      );
+      empId = r.insertId;
+    }
+
     const [result] = await db.query(
-      'INSERT INTO locales (nombre, logo) VALUES (?, ?)',
-      [nombre, logo]
+      'INSERT INTO locales (nombre, logo, empresa_id) VALUES (?, ?, ?)',
+      [nombre, logo, empId]
     );
     const [rows] = await db.query('SELECT * FROM locales WHERE id = ?', [result.insertId]);
     res.status(201).json(rows[0]);

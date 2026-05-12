@@ -24,4 +24,15 @@ function soloAdmin(req, res, next) {
   next();
 }
 
-module.exports = { verificarToken, soloAdmin };
+// Middleware flexible: acepta array de roles permitidos
+// Uso: soloRoles(['ADMIN', 'GERENTE'])
+function soloRoles(roles) {
+  return (req, res, next) => {
+    if (!roles.includes(req.usuario?.rol)) {
+      return res.status(403).json({ error: `Acceso denegado. Roles permitidos: ${roles.join(', ')}` });
+    }
+    next();
+  };
+}
+
+module.exports = { verificarToken, soloAdmin, soloRoles };

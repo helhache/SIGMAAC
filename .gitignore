@@ -19,3 +19,8 @@ npm-debug.log*
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Archivos locales sensibles o temporales
+CREDENCIALES_PRUEBA.txt
+datos  a aplicar/
+imagenes/

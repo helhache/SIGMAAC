@@ -123,9 +123,9 @@ router.get('/log', verificarToken, soloAdmin, async (req, res) => {
     const [rows] = await db.query(
       `SELECT ld.*, l.nombre AS local_nombre, a.descripcion AS activacion
        FROM log_descargas ld
-       INNER JOIN locales l ON l.id = ld.local_id
+       LEFT JOIN locales l ON l.id = ld.local_id
        LEFT JOIN activaciones a ON a.id = ld.activacion_id
-       ORDER BY ld.created_at DESC
+       ORDER BY ld.descargado_at DESC
        LIMIT 200`
     );
     res.json(rows);
@@ -136,11 +136,11 @@ router.get('/log', verificarToken, soloAdmin, async (req, res) => {
 
 // POST /api/asignaciones/log — registrar descarga
 router.post('/log', verificarToken, async (req, res) => {
-  const { activacion_id, tipo_exportacion, es_color } = req.body;
+  const { activacion_id, tipo_cartel, formato } = req.body;
   try {
     await db.query(
-      'INSERT INTO log_descargas (local_id, activacion_id, tipo_exportacion, es_color) VALUES (?, ?, ?, ?)',
-      [req.usuario.local_id || req.usuario.id, activacion_id || null, tipo_exportacion, es_color ? 1 : 0]
+      'INSERT INTO log_descargas (usuario_id, local_id, activacion_id, tipo_cartel, formato) VALUES (?, ?, ?, ?, ?)',
+      [req.usuario.id, req.usuario.local_id || null, activacion_id || null, tipo_cartel || null, formato || null]
     );
     res.status(201).json({ mensaje: 'Descarga registrada' });
   } catch (err) {

@@ -33,23 +33,58 @@ function formatDate(d) {
   return d.toISOString().split('T')[0];
 }
 
-// GET /api/activaciones — admin ve todas, local ve solo las suyas activas
+// GET /api/activaciones — admin ve todas; local ve las suyas; gerente/repositor pueden filtrar por ?local_id=
 router.get('/', verificarToken, async (req, res) => {
   try {
     let rows;
-    if (req.usuario.rol === 'ADMIN') {
-      [rows] = await db.query(
-        'SELECT * FROM activaciones WHERE activo = 1 ORDER BY hasta DESC, descripcion'
-      );
+    const { rol } = req.usuario;
+
+    if (rol === 'ADMIN' || rol === 'GERENTE') {
+      if (req.query.local_id) {
+        // Filtrar por local específico
+        [rows] = await db.query(
+          `SELECT a.*, asi.precio_personalizado, asi.activa AS asignada_activa, asi.local_id
+           FROM activaciones a
+           INNER JOIN asignaciones asi ON asi.activacion_id = a.id
+           WHERE asi.local_id = ? AND asi.activa = 1 AND a.activo = 1
+           ORDER BY a.hasta DESC`,
+          [req.query.local_id]
+        );
+      } else {
+        [rows] = await db.query(
+          'SELECT * FROM activaciones WHERE activo = 1 ORDER BY hasta DESC, descripcion'
+        );
+      }
+    } else if (rol === 'REPOSITOR') {
+      const localId = req.query.local_id;
+      if (!localId) { rows = []; }
+      else {
+        [rows] = await db.query(
+          `SELECT a.*, asi.precio_personalizado, asi.activa AS asignada_activa, asi.local_id
+           FROM activaciones a
+           INNER JOIN asignaciones asi ON asi.activacion_id = a.id
+           WHERE asi.local_id = ? AND asi.activa = 1 AND a.activo = 1
+           ORDER BY a.hasta DESC`,
+          [localId]
+        );
+      }
     } else {
-      [rows] = await db.query(
-        `SELECT a.*, asi.precio_personalizado, asi.activa AS asignada_activa
-         FROM activaciones a
-         INNER JOIN asignaciones asi ON asi.activacion_id = a.id
-         WHERE asi.local_id = ? AND asi.activa = 1 AND a.activo = 1
-         ORDER BY a.hasta DESC`,
-        [req.usuario.local_id]
-      );
+      // LOCAL: busca por sus locales asignados
+      const localIds = req.usuario.local_ids?.length
+        ? req.usuario.local_ids
+        : req.usuario.local_id ? [req.usuario.local_id] : [];
+
+      if (localIds.length === 0) { rows = []; }
+      else {
+        [rows] = await db.query(
+          `SELECT a.*, asi.precio_personalizado, asi.activa AS asignada_activa, asi.local_id
+           FROM activaciones a
+           INNER JOIN asignaciones asi ON asi.activacion_id = a.id
+           WHERE asi.local_id IN (${localIds.map(() => '?').join(',')}) AND asi.activa = 1 AND a.activo = 1
+           ORDER BY a.hasta DESC`,
+          localIds
+        );
+      }
     }
     res.json(rows);
   } catch (err) {

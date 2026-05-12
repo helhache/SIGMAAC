@@ -50,7 +50,7 @@ export default function Login() {
             onError={(e) => { e.target.style.display = 'none'; }}
           />
           <h1 style={{ color: '#fff', fontSize: '1.3rem', fontWeight: 700, marginTop: '1rem' }}>
-            Generador de Carteles
+            SIGMA AC
           </h1>
           <p style={{ color: '#606070', fontSize: '0.85rem', marginTop: '0.3rem' }}>
             Iniciá sesión para continuar

@@ -14,10 +14,7 @@ router.post('/login', async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT u.*, l.nombre AS local_nombre, l.logo AS local_logo
-       FROM usuarios u
-       LEFT JOIN locales l ON u.local_id = l.id
-       WHERE u.username = ? AND u.activo = 1`,
+      `SELECT * FROM usuarios WHERE username = ? AND activo = 1`,
       [username]
     );
 
@@ -33,10 +30,50 @@ router.post('/login', async (req, res) => {
       id: usuario.id,
       username: usuario.username,
       rol: usuario.rol,
-      local_id: usuario.local_id,
-      local_nombre: usuario.local_nombre,
-      local_logo: usuario.local_logo,
+      nombre_display: usuario.nombre_display,
     };
+
+    // Para usuarios LOCAL: buscar sus locales en usuarios_locales
+    if (usuario.rol === 'LOCAL') {
+      const [localesRows] = await db.query(
+        `SELECT l.id, l.nombre FROM usuarios_locales ul
+         JOIN locales l ON l.id = ul.local_id
+         WHERE ul.usuario_id = ? AND l.activo = 1
+         ORDER BY l.nombre`,
+        [usuario.id]
+      );
+      payload.local_ids = localesRows.map(l => l.id);
+      if (localesRows.length > 0) {
+        payload.local_id     = localesRows[0].id;
+        payload.local_nombre = localesRows[0].nombre;
+      }
+    }
+
+    // Para usuarios REPOSITOR: incluir repositor_id y locales asignados
+    if (usuario.rol === 'REPOSITOR') {
+      const [[repo]] = await db.query(
+        'SELECT id, nombre, apellido, numero_vendedor FROM repositores WHERE usuario_id = ? AND activo = 1',
+        [usuario.id]
+      );
+      if (repo) {
+        payload.repositor_id      = repo.id;
+        payload.repositor_nombre  = repo.nombre;
+        payload.repositor_apellido = repo.apellido;
+        payload.numero_vendedor   = repo.numero_vendedor;
+
+        const [localesRepo] = await db.query(
+          `SELECT l.id, l.nombre FROM repositores_locales rl
+           JOIN locales l ON l.id = rl.local_id
+           WHERE rl.repositor_id = ? AND l.activo = 1
+           ORDER BY l.nombre`,
+          [repo.id]
+        );
+        payload.locales = localesRepo; // [{id, nombre}]
+      }
+    }
+
+    // Registrar último login
+    db.query('UPDATE usuarios SET ultimo_login = NOW() WHERE id = ?', [usuario.id]).catch(() => {});
 
     const token = jwt.sign(payload, SECRET, { expiresIn: '12h' });
     res.json({ token, usuario: payload });

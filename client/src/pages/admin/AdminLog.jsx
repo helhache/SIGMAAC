@@ -28,16 +28,16 @@ export default function AdminLog() {
           <tbody>
             {log.map(r => (
               <tr key={r.id} style={{ borderBottom: '1px solid #1a1a24' }}>
-                <td style={{ padding: '0.6rem 0.8rem', color: '#9090a0', whiteSpace: 'nowrap' }}>{formatFecha(r.created_at)}</td>
-                <td style={{ padding: '0.6rem 0.8rem', color: '#6c63ff', fontWeight: 700 }}>{r.local_nombre}</td>
+                <td style={{ padding: '0.6rem 0.8rem', color: '#9090a0', whiteSpace: 'nowrap' }}>{formatFecha(r.descargado_at)}</td>
+                <td style={{ padding: '0.6rem 0.8rem', color: '#6c63ff', fontWeight: 700 }}>{r.local_nombre || '—'}</td>
                 <td style={{ padding: '0.6rem 0.8rem', color: '#fff', maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.activacion || '—'}</td>
                 <td style={{ padding: '0.6rem 0.8rem' }}>
-                  <span style={{ background: r.tipo_exportacion === 'PDF' ? '#e53e3e20' : '#38a16920', color: r.tipo_exportacion === 'PDF' ? '#fc8181' : '#68d391', padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: '0.78rem' }}>
-                    {r.tipo_exportacion}
+                  <span style={{ background: r.tipo_cartel ? '#6c63ff20' : '#2d2d3d', color: r.tipo_cartel ? '#a78bfa' : '#606070', padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: '0.78rem' }}>
+                    {r.tipo_cartel || '—'}
                   </span>
                 </td>
-                <td style={{ padding: '0.6rem 0.8rem', color: r.es_color ? '#dd6b20' : '#9090a0' }}>
-                  {r.es_color ? 'Color' : 'B&N'}
+                <td style={{ padding: '0.6rem 0.8rem', color: '#9090a0' }}>
+                  {r.formato || '—'}
                 </td>
               </tr>
             ))}
