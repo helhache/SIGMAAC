@@ -19,9 +19,6 @@ import AdminCambios from './pages/admin/AdminCambios';
 import AdminObjetivos from './pages/admin/AdminObjetivos';
 import AdminRepositores from './pages/admin/AdminRepositores';
 
-import GerenteCambios from './pages/gerente/GerenteCambios';
-import GerenteObjetivos from './pages/gerente/GerenteObjetivos';
-import GerenteRepositores from './pages/gerente/GerenteRepositores';
 import GerenteReclamos from './pages/gerente/GerenteReclamos';
 
 import LocalLayout from './pages/local/LocalLayout';
