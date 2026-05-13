@@ -28,9 +28,10 @@ export default function LocalLayout({ children }) {
         {/* Links de navegación */}
         <div style={{ display: 'flex', gap: 0, flex: 1 }}>
           {[
-            { to: '/local', label: 'Carteles', end: true },
+            { to: '/local', label: 'Inicio', end: true },
             { to: '/local/pedidos', label: 'Pedidos' },
             { to: '/local/reclamos', label: 'Reclamos' },
+            { to: '/local/carteles', label: 'Carteles' },
           ].map(({ to, label, end }) => (
             <NavLink
               key={to} to={to} end={end}

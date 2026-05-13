@@ -26,14 +26,14 @@ router.get('/:id', verificarToken, async (req, res) => {
 
 // POST /api/productos — solo ADMIN
 router.post('/', verificarToken, soloAdmin, async (req, res) => {
-  const { ean, codigo_venta, nombre, descripcion, unidades_por_bulto, unidades_por_pale, precio_sugerido, unit_value, sovi_requerido } = req.body;
+  const { ean, codigo_venta, nombre, descripcion, unidades_por_bulto, packs_por_corte, unidades_por_pale, precio_sugerido, unit_value, sovi_requerido } = req.body;
   if (!ean || !nombre) return res.status(400).json({ error: 'EAN y nombre son requeridos' });
   try {
     const [result] = await db.query(
-      `INSERT INTO productos (ean, codigo_venta, nombre, descripcion, unidades_por_bulto, unidades_por_pale, precio_sugerido, unit_value, sovi_requerido)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO productos (ean, codigo_venta, nombre, descripcion, unidades_por_bulto, packs_por_corte, unidades_por_pale, precio_sugerido, unit_value, sovi_requerido)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [ean, codigo_venta || null, nombre, descripcion || null,
-       unidades_por_bulto || null, unidades_por_pale || null,
+       unidades_por_bulto || null, packs_por_corte || null, unidades_por_pale || null,
        precio_sugerido || null, unit_value || null, sovi_requerido || null]
     );
     res.status(201).json({ id: result.insertId });
@@ -45,7 +45,7 @@ router.post('/', verificarToken, soloAdmin, async (req, res) => {
 
 // PUT /api/productos/:id — solo ADMIN (actualizar campos o toggle activo)
 router.put('/:id', verificarToken, soloAdmin, async (req, res) => {
-  const { ean, codigo_venta, nombre, descripcion, unidades_por_bulto, unidades_por_pale, precio_sugerido, unit_value, sovi_requerido, activo } = req.body;
+  const { ean, codigo_venta, nombre, descripcion, unidades_por_bulto, packs_por_corte, unidades_por_pale, precio_sugerido, unit_value, sovi_requerido, activo } = req.body;
   try {
     const campos = [];
     const valores = [];
@@ -54,6 +54,7 @@ router.put('/:id', verificarToken, soloAdmin, async (req, res) => {
     if (nombre !== undefined)            { campos.push('nombre = ?');            valores.push(nombre); }
     if (descripcion !== undefined)       { campos.push('descripcion = ?');       valores.push(descripcion); }
     if (unidades_por_bulto !== undefined){ campos.push('unidades_por_bulto = ?');valores.push(unidades_por_bulto); }
+    if (packs_por_corte !== undefined)   { campos.push('packs_por_corte = ?');   valores.push(packs_por_corte); }
     if (unidades_por_pale !== undefined) { campos.push('unidades_por_pale = ?'); valores.push(unidades_por_pale); }
     if (precio_sugerido !== undefined)   { campos.push('precio_sugerido = ?');   valores.push(precio_sugerido); }
     if (unit_value !== undefined)        { campos.push('unit_value = ?');        valores.push(unit_value); }

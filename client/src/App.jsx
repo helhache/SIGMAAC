@@ -22,6 +22,7 @@ import AdminRepositores from './pages/admin/AdminRepositores';
 import GerenteReclamos from './pages/gerente/GerenteReclamos';
 
 import LocalLayout from './pages/local/LocalLayout';
+import LocalInicio from './pages/local/LocalInicio';
 import LocalPanel from './pages/local/LocalPanel';
 import LocalPedidos from './pages/local/LocalPedidos';
 import LocalReclamos from './pages/local/LocalReclamos';
@@ -56,9 +57,10 @@ function App() {
         <Route path="/admin/reclamos" element={<RutaProtegida rolRequerido="ADMIN"><AdminLayout><GerenteReclamos /></AdminLayout></RutaProtegida>} />
 
         {/* Rutas LOCAL */}
-        <Route path="/local" element={<RutaProtegida rolRequerido="LOCAL"><LocalLayout><LocalPanel /></LocalLayout></RutaProtegida>} />
+        <Route path="/local" element={<RutaProtegida rolRequerido="LOCAL"><LocalLayout><LocalInicio /></LocalLayout></RutaProtegida>} />
         <Route path="/local/pedidos" element={<RutaProtegida rolRequerido="LOCAL"><LocalLayout><LocalPedidos /></LocalLayout></RutaProtegida>} />
         <Route path="/local/reclamos" element={<RutaProtegida rolRequerido="LOCAL"><LocalLayout><LocalReclamos /></LocalLayout></RutaProtegida>} />
+        <Route path="/local/carteles" element={<RutaProtegida rolRequerido="LOCAL"><LocalLayout><LocalPanel /></LocalLayout></RutaProtegida>} />
 
         {/* Rutas REPOSITOR */}
         <Route path="/repositor" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorPanel /></RepositorLayout></RutaProtegida>} />

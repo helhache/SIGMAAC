@@ -35,6 +35,7 @@ function TabPedidos({ pedidos, locales, unitG, recargar, esHistorial }) {
   const [notaEdit, setNotaEdit] = useState('');
   const [estadoEdit, setEstadoEdit] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(null);
   const [error, setError] = useState('');
 
   // Filtros (solo historial)
@@ -90,14 +91,33 @@ function TabPedidos({ pedidos, locales, unitG, recargar, esHistorial }) {
     }
   }
 
+  async function eliminarPedido(id, localNombre) {
+    if (!window.confirm(`¿Eliminar el pedido de ${localNombre}? Esta acción no se puede deshacer.`)) return;
+    setEliminando(id);
+    setError('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/pedidos/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.error); return; }
+      if (expandido === id) setExpandido(null);
+      await recargar();
+    } finally {
+      setEliminando(null);
+    }
+  }
+
   function exportar() {
     const filas = pedidosFiltrados.map(p => ({
       Local: p.local_nombre,
       Repositor: p.repositor_nombre ? `${p.repositor_nombre} ${p.repositor_apellido}` : '—',
       'Fecha pedido': p.fecha_pedido?.slice(0, 10),
       'Fecha entrega est.': p.fecha_entrega_estimada?.slice(0, 10) || '—',
+      Packs: p.total_packs ?? '—',
       Bultos: p.total_bultos,
-      Volumen: +((p.total_bultos || 0) * unitG).toFixed(2),
+      Volumen: p.total_volumen != null ? +p.total_volumen : +((p.total_bultos || 0) * unitG).toFixed(2),
       Estado: p.estado,
       Notas: p.notas || '',
     }));
@@ -138,7 +158,11 @@ function TabPedidos({ pedidos, locales, unitG, recargar, esHistorial }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {pedidosFiltrados.map(p => {
-            const vol = ((p.total_bultos || 0) * unitG).toFixed(2);
+            // Volumen: usa total_volumen (guardado por producto×unit_value) si está disponible
+            // Fallback para pedidos viejos: total_bultos × unitG
+            const vol = p.total_volumen != null
+              ? parseFloat(p.total_volumen).toFixed(2)
+              : ((p.total_bultos || 0) * unitG).toFixed(2);
             const abierto = expandido === p.id;
             const det = detalle[p.id];
             return (
@@ -157,7 +181,9 @@ function TabPedidos({ pedidos, locales, unitG, recargar, esHistorial }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 700, color: '#6c63ff', fontSize: '1rem' }}>{vol} <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#606070' }}>vol</span></div>
-                    <div style={{ fontSize: '0.78rem', color: '#9090a0' }}>{p.total_bultos} bultos</div>
+                    <div style={{ fontSize: '0.78rem', color: '#9090a0' }}>
+                      {p.total_packs != null ? `${p.total_packs} packs` : `${p.total_bultos} bultos`}
+                    </div>
                   </div>
                   <BadgeEstado estado={p.estado} />
                   <span style={{ color: '#606070', fontSize: '0.8rem', marginLeft: 'auto' }}>{abierto ? '▲' : '▼'}</span>
@@ -177,19 +203,32 @@ function TabPedidos({ pedidos, locales, unitG, recargar, esHistorial }) {
                           <tr style={{ borderBottom: '1px solid #2d2d3d' }}>
                             <th style={thS}>Código</th>
                             <th style={thS}>Producto</th>
+                            <th style={{ ...thS, textAlign: 'right' }}>Cantidad</th>
+                            <th style={{ ...thS, textAlign: 'right' }}>Packs</th>
                             <th style={{ ...thS, textAlign: 'right' }}>Bultos</th>
                             <th style={{ ...thS, textAlign: 'right' }}>Vol.</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {det.items.map(i => (
+                          {det.items.map(i => {
+                            // Volumen por ítem: packs × unit_value del producto
+                            const itemPacks = i.packs ?? Math.round((i.cantidad_bultos || 0) / Math.max(i.unidades_por_bulto || 1, 1));
+                            const itemVol = (itemPacks * parseFloat(i.unit_value || 0)).toFixed(2);
+                            // Unidad a mostrar: la original si está guardada, o "bultos" como fallback
+                            const cantLabel = i.cantidad_display != null
+                              ? `${i.cantidad_display} ${i.unidad_display}`
+                              : `${i.cantidad_bultos} bultos`;
+                            return (
                             <tr key={i.id} style={{ borderBottom: '1px solid #1a1a2e' }}>
                               <td style={{ padding: '4px 8px', color: '#606070' }}>{i.codigo_venta || '—'}</td>
                               <td style={{ padding: '4px 8px', color: '#e0e0e0' }}>{i.producto_nombre}</td>
-                              <td style={{ padding: '4px 8px', textAlign: 'right', color: '#9090a0' }}>{i.cantidad_bultos}</td>
-                              <td style={{ padding: '4px 8px', textAlign: 'right', color: '#6c63ff', fontWeight: 600 }}>{((i.cantidad_bultos || 0) * unitG).toFixed(2)}</td>
+                              <td style={{ padding: '4px 8px', textAlign: 'right', color: '#fff', fontWeight: 600 }}>{cantLabel}</td>
+                              <td style={{ padding: '4px 8px', textAlign: 'right', color: '#9090a0' }}>{itemPacks}</td>
+                              <td style={{ padding: '4px 8px', textAlign: 'right', color: '#606070' }}>{i.cantidad_bultos}</td>
+                              <td style={{ padding: '4px 8px', textAlign: 'right', color: '#6c63ff', fontWeight: 600 }}>{itemVol}</td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                     ) : (
@@ -197,7 +236,7 @@ function TabPedidos({ pedidos, locales, unitG, recargar, esHistorial }) {
                     )}
 
                     {/* Acciones */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, alignItems: 'end' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto auto', gap: 10, alignItems: 'end' }}>
                       <div>
                         <label className="form-label">Estado</label>
                         <select className="form-control" value={estadoEdit} onChange={e => setEstadoEdit(e.target.value)}>
@@ -215,6 +254,13 @@ function TabPedidos({ pedidos, locales, unitG, recargar, esHistorial }) {
                       >
                         {guardando ? '...' : 'Guardar'}
                       </button>
+                      <button
+                        onClick={() => eliminarPedido(p.id, p.local_nombre)}
+                        disabled={eliminando === p.id}
+                        style={{ padding: '0.55rem 1rem', background: 'none', color: '#dc2626', border: '1px solid #dc262650', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                      >
+                        {eliminando === p.id ? '...' : 'Eliminar'}
+                      </button>
                     </div>
                   </div>
                 )}
@@ -231,20 +277,35 @@ function TabPedidos({ pedidos, locales, unitG, recargar, esHistorial }) {
 function TabProductos({ productos, recargar }) {
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ ean: '', codigo_venta: '', nombre: '', descripcion: '', unidades_por_bulto: '', precio_sugerido: '', unit_value: '', sovi_requerido: '' });
+  const [form, setForm] = useState({ ean: '', codigo_venta: '', nombre: '', descripcion: '', unidades_por_bulto: '', packs_por_corte: '', unidades_por_pale: '', precio_sugerido: '', unit_value: '', sovi_requerido: '' });
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const [filtroMarca, setFiltroMarca] = useState('');
+  const [filtroRetornable, setFiltroRetornable] = useState('');
+  const [filtroActivo, setFiltroActivo] = useState('1');
 
-  const prodFiltrados = productos.filter(p =>
-    p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (p.codigo_venta || '').toLowerCase().includes(busqueda.toLowerCase()) ||
-    String(p.ean || '').includes(busqueda)
-  );
+  const marcas = [...new Set(productos.map(p => p.marca).filter(Boolean))].sort();
+
+  const prodFiltrados = productos.filter(p => {
+    if (filtroActivo === '1' && !p.activo) return false;
+    if (filtroActivo === '0' && p.activo) return false;
+    if (filtroMarca && p.marca !== filtroMarca) return false;
+    if (filtroRetornable === 'SI' && !p.retornable) return false;
+    if (filtroRetornable === 'NO' && p.retornable) return false;
+    if (busqueda) {
+      const q = busqueda.toLowerCase();
+      return p.nombre.toLowerCase().includes(q) ||
+        (p.codigo_venta || '').toLowerCase().includes(q) ||
+        (p.sabor || '').toLowerCase().includes(q) ||
+        String(p.ean || '').includes(q);
+    }
+    return true;
+  });
 
   function abrirNuevo() {
     setEditando(null);
-    setForm({ ean: '', codigo_venta: '', nombre: '', descripcion: '', unidades_por_bulto: '', precio_sugerido: '', unit_value: '', sovi_requerido: '' });
+    setForm({ ean: '', codigo_venta: '', nombre: '', descripcion: '', unidades_por_bulto: '', packs_por_corte: '', unidades_por_pale: '', precio_sugerido: '', unit_value: '', sovi_requerido: '' });
     setError('');
     setModal(true);
   }
@@ -254,6 +315,7 @@ function TabProductos({ productos, recargar }) {
     setForm({
       ean: p.ean || '', codigo_venta: p.codigo_venta || '', nombre: p.nombre || '',
       descripcion: p.descripcion || '', unidades_por_bulto: p.unidades_por_bulto || '',
+      packs_por_corte: p.packs_por_corte || '', unidades_por_pale: p.unidades_por_pale || '',
       precio_sugerido: p.precio_sugerido || '', unit_value: p.unit_value || '',
       sovi_requerido: p.sovi_requerido || '',
     });
@@ -286,6 +348,8 @@ function TabProductos({ productos, recargar }) {
           ...form,
           ean: Number(form.ean),
           unidades_por_bulto: form.unidades_por_bulto ? Number(form.unidades_por_bulto) : null,
+          packs_por_corte: form.packs_por_corte ? Number(form.packs_por_corte) : null,
+          unidades_por_pale: form.unidades_por_pale ? Number(form.unidades_por_pale) : null,
           precio_sugerido: form.precio_sugerido ? Number(form.precio_sugerido) : null,
           unit_value: form.unit_value ? Number(form.unit_value) : null,
           sovi_requerido: form.sovi_requerido ? Number(form.sovi_requerido) : null,
@@ -315,19 +379,48 @@ function TabProductos({ productos, recargar }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 10, marginBottom: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <input className="form-control" value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre, código o EAN..." style={{ flex: 1, minWidth: 200 }} />
+      <div style={{ display: 'flex', gap: 8, marginBottom: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          className="form-control"
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre, código, sabor o EAN..."
+          style={{ flex: 1, minWidth: 200 }}
+        />
+        <select className="form-control" value={filtroMarca} onChange={e => setFiltroMarca(e.target.value)} style={{ width: 160 }}>
+          <option value="">Todas las marcas</option>
+          {marcas.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select className="form-control" value={filtroRetornable} onChange={e => setFiltroRetornable(e.target.value)} style={{ width: 150 }}>
+          <option value="">Retornable/NR</option>
+          <option value="SI">Retornable</option>
+          <option value="NO">No retornable</option>
+        </select>
+        <select className="form-control" value={filtroActivo} onChange={e => setFiltroActivo(e.target.value)} style={{ width: 130 }}>
+          <option value="1">Solo activos</option>
+          <option value="0">Solo inactivos</option>
+          <option value="">Todos</option>
+        </select>
+        <button
+          onClick={() => { setBusqueda(''); setFiltroMarca(''); setFiltroRetornable(''); setFiltroActivo('1'); }}
+          style={{ padding: '0.5rem 0.8rem', background: '#2d2d3d', border: 'none', borderRadius: 6, color: '#9090a0', cursor: 'pointer', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
+        >
+          Limpiar
+        </button>
         <button onClick={exportar} style={{ padding: '0.5rem 0.9rem', background: '#38a16920', border: '1px solid #38a16940', borderRadius: 6, color: '#68d391', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
           Exportar Excel
         </button>
         <button className="btn-nuevo" onClick={abrirNuevo}>+ Nuevo producto</button>
+      </div>
+      <div style={{ fontSize: '0.78rem', color: '#606070', marginBottom: '0.6rem' }}>
+        {prodFiltrados.length} producto{prodFiltrados.length !== 1 ? 's' : ''} encontrados
       </div>
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #2d2d3d' }}>
-              {['Código', 'EAN', 'Nombre', 'Unid/Bulto', 'Precio Sug.', 'Unit Value', 'SOVI %', 'Activo', ''].map(h => (
+              {['Código', 'Nombre', 'Marca', 'Sabor', 'Ret.', 'Unid/Bulto', 'Unit Value', 'Activo', ''].map(h => (
                 <th key={h} style={thS}>{h}</th>
               ))}
             </tr>
@@ -340,12 +433,18 @@ function TabProductos({ productos, recargar }) {
             ) : prodFiltrados.map(p => (
               <tr key={p.id} style={{ borderBottom: '1px solid #12121a', opacity: p.activo ? 1 : 0.45 }}>
                 <td style={{ padding: '0.5rem 0.8rem', color: '#9090a0' }}>{p.codigo_venta || '—'}</td>
-                <td style={{ padding: '0.5rem 0.8rem', color: '#606070', fontSize: '0.78rem' }}>{p.ean}</td>
-                <td style={{ padding: '0.5rem 0.8rem', color: '#fff', fontWeight: 600, maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nombre}</td>
+                <td style={{ padding: '0.5rem 0.8rem', color: '#fff', fontWeight: 600, maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nombre}</td>
+                <td style={{ padding: '0.5rem 0.8rem', color: '#a78bfa' }}>{p.marca || '—'}</td>
+                <td style={{ padding: '0.5rem 0.8rem', color: '#9090a0', fontSize: '0.78rem' }}>{p.sabor || '—'}</td>
+                <td style={{ padding: '0.5rem 0.8rem', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+                    background: p.retornable ? '#16a34a22' : '#60606022',
+                    color: p.retornable ? '#4ade80' : '#606070' }}>
+                    {p.retornable ? 'RET' : 'NR'}
+                  </span>
+                </td>
                 <td style={{ padding: '0.5rem 0.8rem', color: '#9090a0', textAlign: 'right' }}>{p.unidades_por_bulto || '—'}</td>
-                <td style={{ padding: '0.5rem 0.8rem', color: '#38a169', fontWeight: 600 }}>{p.precio_sugerido ? `$${Number(p.precio_sugerido).toLocaleString('es-AR')}` : '—'}</td>
-                <td style={{ padding: '0.5rem 0.8rem', color: '#6c63ff', fontWeight: 600 }}>{p.unit_value || '—'}</td>
-                <td style={{ padding: '0.5rem 0.8rem', color: '#9090a0' }}>{p.sovi_requerido ? `${p.sovi_requerido}%` : '—'}</td>
+                <td style={{ padding: '0.5rem 0.8rem', color: '#6c63ff', fontWeight: 600 }}>{p.unit_value ? Number(p.unit_value).toFixed(4) : '—'}</td>
                 <td style={{ padding: '0.5rem 0.8rem' }}>
                   <button onClick={() => toggleActivo(p)} style={{
                     padding: '2px 10px', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem',
@@ -383,8 +482,16 @@ function TabProductos({ productos, recargar }) {
                 <input className="form-control" value={form.codigo_venta} onChange={e => setForm(f => ({ ...f, codigo_venta: e.target.value }))} placeholder="Ej: 0082" />
               </div>
               <div className="form-group">
-                <label className="form-label">Unidades por bulto</label>
-                <input className="form-control" type="number" value={form.unidades_por_bulto} onChange={e => setForm(f => ({ ...f, unidades_por_bulto: e.target.value }))} placeholder="12" />
+                <label className="form-label">Unidades/pack (botellas)</label>
+                <input className="form-control" type="number" value={form.unidades_por_bulto} onChange={e => setForm(f => ({ ...f, unidades_por_bulto: e.target.value }))} placeholder="6" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Packs por corte</label>
+                <input className="form-control" type="number" value={form.packs_por_corte} onChange={e => setForm(f => ({ ...f, packs_por_corte: e.target.value }))} placeholder="4" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Packs por pale</label>
+                <input className="form-control" type="number" value={form.unidades_por_pale} onChange={e => setForm(f => ({ ...f, unidades_por_pale: e.target.value }))} placeholder="28" />
               </div>
               <div className="form-group">
                 <label className="form-label">Precio sugerido ($)</label>

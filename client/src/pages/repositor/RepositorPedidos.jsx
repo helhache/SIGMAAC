@@ -70,7 +70,9 @@ export default function RepositorPedidos() {
                   )}
                 </div>
                 <div style={{ fontSize: 13, color: '#9090a0' }}>{p.fecha_pedido?.slice(0, 10)}</div>
-                <div style={{ fontSize: 13, color: '#9090a0' }}>{p.total_bultos} bultos</div>
+                <div style={{ fontSize: 13, color: '#9090a0' }}>
+                  {p.total_packs != null ? `${p.total_packs} packs` : `${p.total_bultos} bultos`}
+                </div>
                 <span style={{
                   fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12,
                   background: (colorEstado[p.estado] || '#888') + '22',
@@ -88,16 +90,24 @@ export default function RepositorPedidos() {
                       <thead>
                         <tr style={{ color: '#606070', borderBottom: '1px solid #2d2d3d' }}>
                           <th style={{ textAlign: 'left', padding: '4px 8px' }}>Producto</th>
-                          <th style={{ textAlign: 'right', padding: '4px 8px' }}>Bultos</th>
+                          <th style={{ textAlign: 'right', padding: '4px 8px' }}>Cantidad</th>
+                          <th style={{ textAlign: 'right', padding: '4px 8px' }}>Packs</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {detalle.items.map(i => (
+                        {detalle.items.map(i => {
+                          const cantLabel = i.cantidad_display != null
+                            ? `${i.cantidad_display} ${i.unidad_display}`
+                            : `${i.cantidad_bultos} bultos`;
+                          const itemPacks = i.packs ?? Math.round((i.cantidad_bultos || 0) / Math.max(i.unidades_por_bulto || 1, 1));
+                          return (
                           <tr key={i.id} style={{ borderBottom: '1px solid #1e1e28', color: '#ccc' }}>
                             <td style={{ padding: '4px 8px' }}>{i.producto_nombre}</td>
-                            <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, color: '#a78bfa' }}>{i.cantidad_bultos}</td>
+                            <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, color: '#a78bfa' }}>{cantLabel}</td>
+                            <td style={{ padding: '4px 8px', textAlign: 'right', color: '#9090a0' }}>{itemPacks}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
