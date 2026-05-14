@@ -20,11 +20,11 @@ export default function RepositorActivaciones() {
     setError('');
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/asignaciones?local_id=${localId}`, {
+      const res = await fetch(`${API_URL}/api/activaciones?local_id=${localId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setActivaciones(data);
+      setActivaciones(Array.isArray(data) ? data : []);
     } catch {
       setError('No se pudieron cargar las activaciones');
     } finally {

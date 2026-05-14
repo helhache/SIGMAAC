@@ -28,11 +28,15 @@ import LocalPedidos from './pages/local/LocalPedidos';
 import LocalReclamos from './pages/local/LocalReclamos';
 
 import RepositorLayout from './pages/repositor/RepositorLayout';
-import RepositorPanel from './pages/repositor/RepositorPanel';
+import RepositorInicio from './pages/repositor/RepositorInicio';
+import RepositorMisLocales from './pages/repositor/RepositorMisLocales';
+import RepositorObjetivos from './pages/repositor/RepositorObjetivos';
 import RepositorActivaciones from './pages/repositor/RepositorActivaciones';
+import RepositorPrecios from './pages/repositor/RepositorPrecios';
 import RepositorCambios from './pages/repositor/RepositorCambios';
 import RepositorPedidos from './pages/repositor/RepositorPedidos';
-import RepositorReclamos from './pages/repositor/RepositorReclamos';
+import RepositorActividades from './pages/repositor/RepositorActividades';
+import RepositorCarteles from './pages/repositor/RepositorCarteles';
 
 function App() {
   return (
@@ -63,11 +67,15 @@ function App() {
         <Route path="/local/carteles" element={<RutaProtegida rolRequerido="LOCAL"><LocalLayout><LocalPanel /></LocalLayout></RutaProtegida>} />
 
         {/* Rutas REPOSITOR */}
-        <Route path="/repositor" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorPanel /></RepositorLayout></RutaProtegida>} />
+        <Route path="/repositor" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorInicio /></RepositorLayout></RutaProtegida>} />
+        <Route path="/repositor/mis-locales" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorMisLocales /></RepositorLayout></RutaProtegida>} />
+        <Route path="/repositor/objetivos" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorObjetivos /></RepositorLayout></RutaProtegida>} />
         <Route path="/repositor/activaciones" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorActivaciones /></RepositorLayout></RutaProtegida>} />
+        <Route path="/repositor/precios" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorPrecios /></RepositorLayout></RutaProtegida>} />
         <Route path="/repositor/cambios" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorCambios /></RepositorLayout></RutaProtegida>} />
         <Route path="/repositor/pedidos" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorPedidos /></RepositorLayout></RutaProtegida>} />
-        <Route path="/repositor/reclamos" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorReclamos /></RepositorLayout></RutaProtegida>} />
+        <Route path="/repositor/actividades" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorActividades /></RepositorLayout></RutaProtegida>} />
+        <Route path="/repositor/carteles" element={<RutaProtegida rolRequerido="REPOSITOR"><RepositorLayout><RepositorCarteles /></RepositorLayout></RutaProtegida>} />
 
         {/* Raíz → login */}
         <Route path="*" element={<Navigate to="/login" replace />} />

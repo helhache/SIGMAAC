@@ -135,4 +135,51 @@ router.put('/:id/estado', verificarToken, soloRoles(['ADMIN']), async (req, res)
   }
 });
 
+// PATCH /api/cambios/:id/reclamar — repositor re-envía al admin
+router.patch('/:id/reclamar', verificarToken, soloRoles(['REPOSITOR']), async (req, res) => {
+  try {
+    const [[cambio]] = await db.query('SELECT * FROM cambios WHERE id = ?', [req.params.id]);
+    if (!cambio) return res.status(404).json({ error: 'Cambio no encontrado' });
+    const [[repo]] = await db.query('SELECT id FROM repositores WHERE usuario_id = ?', [req.usuario.id]);
+    if (!repo || cambio.repositor_id !== repo.id)
+      return res.status(403).json({ error: 'No autorizado' });
+    await db.query('UPDATE cambios SET estado = ? WHERE id = ?', ['pendiente', req.params.id]);
+    res.json({ mensaje: 'Cambio reclamado y re-enviado al admin' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al reclamar', detalle: err.message });
+  }
+});
+
+// PATCH /api/cambios/:id/cancelar
+router.patch('/:id/cancelar', verificarToken, soloRoles(['REPOSITOR']), async (req, res) => {
+  try {
+    const [[cambio]] = await db.query('SELECT * FROM cambios WHERE id = ?', [req.params.id]);
+    if (!cambio) return res.status(404).json({ error: 'Cambio no encontrado' });
+    const [[repo]] = await db.query('SELECT id FROM repositores WHERE usuario_id = ?', [req.usuario.id]);
+    if (!repo || cambio.repositor_id !== repo.id)
+      return res.status(403).json({ error: 'No autorizado' });
+    await db.query('UPDATE cambios SET estado = ? WHERE id = ?', ['cancelado', req.params.id]);
+    res.json({ mensaje: 'Cambio cancelado' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al cancelar', detalle: err.message });
+  }
+});
+
+// DELETE /api/cambios/:id
+router.delete('/:id', verificarToken, soloRoles(['REPOSITOR', 'ADMIN']), async (req, res) => {
+  try {
+    const [[cambio]] = await db.query('SELECT * FROM cambios WHERE id = ?', [req.params.id]);
+    if (!cambio) return res.status(404).json({ error: 'Cambio no encontrado' });
+    if (req.usuario.rol === 'REPOSITOR') {
+      const [[repo]] = await db.query('SELECT id FROM repositores WHERE usuario_id = ?', [req.usuario.id]);
+      if (!repo || cambio.repositor_id !== repo.id)
+        return res.status(403).json({ error: 'No autorizado' });
+    }
+    await db.query('DELETE FROM cambios WHERE id = ?', [req.params.id]);
+    res.json({ mensaje: 'Cambio eliminado' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al eliminar', detalle: err.message });
+  }
+});
+
 module.exports = router;

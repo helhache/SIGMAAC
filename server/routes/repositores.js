@@ -25,6 +25,69 @@ router.get('/', verificarToken, adminOGerente, async (req, res) => {
   }
 });
 
+// GET /api/repositores/me/resumen — dashboard del repositor
+router.get('/me/resumen', verificarToken, soloRoles(['REPOSITOR']), async (req, res) => {
+  try {
+    const [[repo]] = await db.query('SELECT * FROM repositores WHERE usuario_id = ?', [req.usuario.id]);
+    if (!repo) return res.status(404).json({ error: 'Repositor no encontrado' });
+
+    const [locales] = await db.query(
+      `SELECT l.id, l.nombre FROM repositores_locales rl
+       JOIN locales l ON l.id = rl.local_id WHERE rl.repositor_id = ?`, [repo.id]
+    );
+
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const mes = hoy.getMonth() + 1;
+    const inicioMes = `${anio}-${String(mes).padStart(2,'0')}-01`;
+    const diasMes = new Date(anio, mes, 0).getDate();
+    const finMes = `${anio}-${String(mes).padStart(2,'0')}-${diasMes}`;
+    const inicioAnio = `${anio}-01-01`;
+    const finAnio = `${anio}-12-31`;
+
+    const localesData = await Promise.all(locales.map(async l => {
+      const [[{ vol_mes }]] = await db.query(
+        `SELECT COALESCE(SUM(CASE WHEN total_volumen > 0 THEN total_volumen ELSE total_bultos END), 0) AS vol_mes
+         FROM pedidos WHERE local_id = ? AND fecha_pedido BETWEEN ? AND ? AND estado IN ('confirmado','en_transito','entregado')`,
+        [l.id, inicioMes, finMes]
+      );
+      const [[{ vol_anio }]] = await db.query(
+        `SELECT COALESCE(SUM(CASE WHEN total_volumen > 0 THEN total_volumen ELSE total_bultos END), 0) AS vol_anio
+         FROM pedidos WHERE local_id = ? AND fecha_pedido BETWEEN ? AND ? AND estado IN ('confirmado','en_transito','entregado')`,
+        [l.id, inicioAnio, finAnio]
+      );
+      const [[{ pedidos_mes }]] = await db.query(
+        `SELECT COUNT(*) AS pedidos_mes FROM pedidos WHERE local_id = ? AND fecha_pedido BETWEEN ? AND ?`,
+        [l.id, inicioMes, finMes]
+      );
+      const [[obj_local]] = await db.query(
+        `SELECT ol.volumen_objetivo FROM objetivo_locales ol
+         JOIN objetivos o ON o.id = ol.objetivo_id
+         WHERE ol.local_id = ? AND o.fecha_inicio <= ? AND o.fecha_fin >= ? AND o.activo = 1
+         ORDER BY o.periodo ASC LIMIT 1`,
+        [l.id, finMes, inicioMes]
+      );
+      return { ...l, vol_mes: parseFloat(vol_mes), vol_anio: parseFloat(vol_anio), pedidos_mes: parseInt(pedidos_mes), volumen_objetivo_local: obj_local ? parseFloat(obj_local.volumen_objetivo) : 0 };
+    }));
+
+    res.json({ repositor: repo, locales: localesData });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener resumen', detalle: err.message });
+  }
+});
+
+// GET /api/repositores/me/tareas
+router.get('/me/tareas', verificarToken, soloRoles(['REPOSITOR']), async (req, res) => {
+  try {
+    const [[repo]] = await db.query('SELECT id FROM repositores WHERE usuario_id = ?', [req.usuario.id]);
+    if (!repo) return res.json([]);
+    const [rows] = await db.query('SELECT * FROM tareas WHERE repositor_id = ? ORDER BY creado_at DESC', [repo.id]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener tareas', detalle: err.message });
+  }
+});
+
 // GET /api/repositores/:id
 router.get('/:id', verificarToken, adminOGerente, async (req, res) => {
   try {

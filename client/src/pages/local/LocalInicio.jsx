@@ -5,6 +5,61 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
+// ── Progreso de objetivos ─────────────────────────────────────────────────
+function pctColor(p) {
+  if (p >= 100) return '#16a34a';
+  if (p >= 80)  return '#2563eb';
+  if (p >= 50)  return '#d97706';
+  return '#dc2626';
+}
+const CP = {
+  semanal: { bg: '#2563eb22', color: '#60a5fa' },
+  mensual: { bg: '#7c3aed22', color: '#a78bfa' },
+  anual:   { bg: '#d9770622', color: '#f6ad55' },
+};
+function BarraObjetivo({ pct, color }) {
+  const p = Math.min(100, Math.max(0, pct || 0));
+  return (
+    <div style={{ background: '#2d2d3d', borderRadius: 4, height: 6, overflow: 'hidden', marginTop: 5 }}>
+      <div style={{ width: `${p}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.4s' }} />
+    </div>
+  );
+}
+function CardObjetivo({ obj }) {
+  const cp = CP[obj.periodo] || CP.mensual;
+  const color = pctColor(obj.porcentaje);
+  const fmtN = n => Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+  return (
+    <div style={{ background: '#1a1a24', border: `1px solid ${cp.color}33`, borderRadius: 10, padding: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+        <span style={{ ...cp, padding: '2px 8px', borderRadius: 6, fontSize: '0.68rem', fontWeight: 700 }}>
+          {obj.periodo.toUpperCase()}
+        </span>
+        {obj.visible_porcentaje && (
+          <span style={{ fontSize: '1.4rem', fontWeight: 800, color, lineHeight: 1 }}>
+            {obj.porcentaje?.toFixed(1)}%
+          </span>
+        )}
+      </div>
+      {obj.descripcion && (
+        <div style={{ color: '#9090a0', fontSize: '0.78rem', marginBottom: 5 }}>{obj.descripcion}</div>
+      )}
+      {obj.visible_volumen && (
+        <div style={{ marginBottom: 5 }}>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>{fmtN(obj.volumen_actual)}</span>
+          <span style={{ color: '#606070', fontSize: '0.7rem' }}> / {fmtN(obj.volumen_objetivo)}</span>
+        </div>
+      )}
+      {(obj.visible_porcentaje || obj.visible_volumen) && (
+        <BarraObjetivo pct={obj.porcentaje} color={color} />
+      )}
+      <div style={{ marginTop: 5, fontSize: '0.68rem', color: '#505060' }}>
+        {obj.fecha_inicio} → {obj.fecha_fin}
+      </div>
+    </div>
+  );
+}
+
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 const colorEstado = {
@@ -18,17 +73,22 @@ const colorEstado = {
 export default function LocalInicio() {
   const { usuario } = useAuth();
   const [pedidos, setPedidos] = useState([]);
+  const [objetivos, setObjetivos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     async function cargar() {
+      const token = localStorage.getItem('token');
+      const h = { Authorization: `Bearer ${token}` };
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API_URL}/api/pedidos`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setPedidos(Array.isArray(data) ? data : []);
+        const [resPedidos, resObj] = await Promise.allSettled([
+          fetch(`${API_URL}/api/pedidos`, { headers: h }).then(r => r.json()),
+          fetch(`${API_URL}/api/objetivos/progreso`, { headers: h }).then(r => r.json()),
+        ]);
+        if (resPedidos.status === 'fulfilled' && Array.isArray(resPedidos.value))
+          setPedidos(resPedidos.value);
+        if (resObj.status === 'fulfilled' && Array.isArray(resObj.value))
+          setObjetivos(resObj.value);
       } catch { /* silencioso */ }
       finally { setCargando(false); }
     }
@@ -88,6 +148,18 @@ export default function LocalInicio() {
         <StatCard label="Bultos del mes" valor={bultosMes} icon="📊" />
         <StatCard label="Bultos esperados" valor={volumenEsperado} icon="🚚" sublabel="confirmados + en tránsito" />
       </div>
+
+      {/* Objetivos del equipo */}
+      {objetivos.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ margin: '0 0 10px', color: '#9090a0', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Progreso de objetivos
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+            {objetivos.map(obj => <CardObjetivo key={obj.id} obj={obj} />)}
+          </div>
+        </div>
+      )}
 
       {/* Gráfico */}
       <div style={{

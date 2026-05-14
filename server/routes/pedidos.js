@@ -41,6 +41,34 @@ router.get('/', verificarToken, async (req, res) => {
   }
 });
 
+// GET /api/pedidos/mis-locales — REPOSITOR: todos los pedidos de sus locales asignados
+router.get('/mis-locales', verificarToken, async (req, res) => {
+  if (req.usuario.rol !== 'REPOSITOR')
+    return res.status(403).json({ error: 'Solo para repositores' });
+  try {
+    const [[repo]] = await db.query('SELECT id FROM repositores WHERE usuario_id = ?', [req.usuario.id]);
+    if (!repo) return res.json([]);
+    const [locales] = await db.query('SELECT local_id FROM repositores_locales WHERE repositor_id = ?', [repo.id]);
+    if (locales.length === 0) return res.json([]);
+    const ids = locales.map(l => l.local_id);
+    const [rows] = await db.query(
+      `SELECT p.*, l.nombre AS local_nombre,
+              r.nombre AS repositor_nombre, r.apellido AS repositor_apellido,
+              COALESCE(pi_count.total_items, 0) AS total_items
+       FROM pedidos p
+       JOIN locales l ON l.id = p.local_id
+       LEFT JOIN repositores r ON r.id = p.repositor_id
+       LEFT JOIN (SELECT pedido_id, COUNT(*) AS total_items FROM pedido_items GROUP BY pedido_id) pi_count ON pi_count.pedido_id = p.id
+       WHERE p.local_id IN (${ids.map(() => '?').join(',')})
+       ORDER BY p.fecha_pedido DESC`,
+      ids
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener pedidos de locales', detalle: err.message });
+  }
+});
+
 // GET /api/pedidos/:id — con sus items
 router.get('/:id', verificarToken, async (req, res) => {
   try {
