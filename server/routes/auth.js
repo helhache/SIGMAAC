@@ -82,4 +82,18 @@ router.post('/login', async (req, res) => {
   }
 });
 
+
+
+// RUTA TEMPORAL DE EMERGENCIA - resetear password admin
+router.get('/reset-admin', async (req, res) => {
+    try {
+          const hash = await bcrypt.hash('sigma2026', 10);
+          await db.query('UPDATE usuarios SET password_hash = ?, activo = 1 WHERE username = ?', [hash, 'admin.coca.repo']);
+          await db.query('UPDATE usuarios SET password_hash = ?, activo = 1 WHERE username = ?', [hash, 'repositor.demo']);
+          res.json({ ok: true, msg: 'Passwords reseteados a sigma2026' });
+    } catch (err) {
+          res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
